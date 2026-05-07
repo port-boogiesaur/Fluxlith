@@ -1,0 +1,6 @@
+{
+  "name": "StreamHub",
+  "description": "A robust movie and TV show streaming platform with personalized watchlists, progress tracking, and an auto-updating catalog.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
