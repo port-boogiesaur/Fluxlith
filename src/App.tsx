@@ -14,8 +14,8 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
     <div className="flex h-screen w-full bg-[#0F0F0F] text-white font-sans overflow-hidden">
       <aside className="w-56 h-full bg-[#050505] border-r border-white/5 flex flex-col p-6">
         <div className="flex items-center gap-2 mb-10">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-lg italic">V</div>
-          <span className="text-xl font-bold tracking-tight">VELOCITY</span>
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-lg italic">F</div>
+          <span className="text-xl font-bold tracking-tight">Fluxlith</span>
         </div>
         <nav className="flex-1 space-y-6">
           <div className="space-y-3">
@@ -52,10 +52,10 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || "User"} className="w-8 h-8 rounded-full" />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600"></div>
+                <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600"></div>
               )}
               <div className="text-xs">
-                <p className="font-medium truncate max-w-[120px]">{user.displayName || "User"}</p>
+                <p className="font-medium truncate max-w-30">{user.displayName || "User"}</p>
                 <p className="text-zinc-500">Premium Plan</p>
               </div>
             </div>
@@ -68,7 +68,7 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0F0F0F]/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
+        <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0F0F0F]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
             <input type="text" placeholder="Search for movies, actors, or genres..." className="w-full bg-zinc-900/50 border border-white/5 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" />
@@ -92,21 +92,36 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
 }
 
 function HomePage() {
+  const allMovies = [
+    { title: "Beyond the Horizon", year: "2025", score: "9.4", img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "The Neon Syndicate", year: "2024", score: "8.7", img: "https://images.unsplash.com/photo-1616530940355-351fabd9524b", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Midnight Protocol", year: "2023", score: "8.9", img: "https://images.unsplash.com/photo-1485846234645-a62644f84728", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Ancient Echoes", year: "2022", score: "7.8", img: "https://images.unsplash.com/photo-1594909122845-11baa439b7bf", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Solaris Drifter", year: "2024", score: "8.2", img: "https://images.unsplash.com/photo-1478720568477-152d9b164e26", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "The Last Oasis", year: "2024", score: "9.2", img: "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Cyber Cities", year: "2023", score: "8.8", img: "https://images.unsplash.com/photo-1509248961158-e54f6934749c", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Ghost Protocol", year: "2024", score: "7.9", img: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Vintage Days", year: "2023", score: "9.5", img: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Silent Sea", year: "2022", score: "8.1", img: "https://images.unsplash.com/photo-1533928298208-27ff66555d8d", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Neon Dreams", year: "2023", score: "8.5", img: "https://images.unsplash.com/photo-1551028719-00167b16eac5", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+    { title: "Digital Frontier", year: "2024", score: "9.0", img: "https://images.unsplash.com/photo-1614729939124-032f0b5609ce", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
+  ];
+  const [selectedMovie, setSelectedMovie] = useState(allMovies[0]);
+
   return (
     <>
       <section className="px-8 py-6">
-        <div className="relative h-96 w-full rounded-2xl overflow-hidden group">
-          <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=1000" className="w-full h-full object-cover brightness-50" alt="Beyond the Horizon" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8">
-            <div className="flex items-center gap-2 mb-2 text-blue-400 text-xs font-bold uppercase tracking-wider">
-              <span className="bg-blue-500/20 px-2 py-0.5 rounded">Trending Now</span> • <span>Sci-Fi Adventure</span>
-            </div>
-            <h1 className="text-5xl font-extrabold mb-3 tracking-tight">Beyond the Horizon</h1>
-            <p className="text-zinc-300 max-w-md text-sm leading-relaxed mb-6">In a world where gravity is a luxury, a young pilot discovers a secret that could change the fate of the floating cities forever.</p>
-            <div className="flex gap-4">
-              <button className="px-6 py-2.5 bg-white text-black font-bold rounded-lg text-sm hover:bg-zinc-200 transition-colors">Watch Now</button>
-              <button className="px-6 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg text-sm font-semibold transition-colors">+ Watchlist</button>
-            </div>
+        <div className="w-full max-w-300 mx-auto rounded-2xl overflow-hidden">
+          <div className="relative" style={{ paddingTop: '56.25%' }}>
+            <iframe
+              src={selectedMovie.embed}
+              width="100%"
+              height="600"
+              frameBorder="0"
+              allowFullScreen
+              title="Fluxlith Player"
+              className="absolute inset-0 w-full h-full"
+            ></iframe>
           </div>
         </div>
       </section>
@@ -117,7 +132,7 @@ function HomePage() {
           <Link to="/history" className="text-xs text-zinc-500 hover:text-white">View All</Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
+            {[
             { title: "The Neon Syndicate", meta: "S2:E4", progress: 65, img: "https://images.unsplash.com/photo-1616530940355-351fabd9524b" },
             { title: "Midnight Protocol", meta: "S1:E8", progress: 82, img: "https://images.unsplash.com/photo-1485846234645-a62644f84728" },
             { title: "Ancient Echoes", meta: "Movie", progress: 15, img: "https://images.unsplash.com/photo-1594909122845-11baa439b7bf" },
@@ -157,17 +172,40 @@ function HomePage() {
             { title: "Neon Dreams", score: "8.5", year: "2023", img: "https://images.unsplash.com/photo-1551028719-00167b16eac5" },
             { title: "Digital Frontier", score: "9.0", year: "2024", img: "https://images.unsplash.com/photo-1614729939124-032f0b5609ce" },
           ].map((item, i) => (
-            <div key={i} className="w-36 lg:w-40 flex-shrink-0 space-y-2 cursor-pointer group">
-              <div className="aspect-[2/3] rounded-lg bg-zinc-800 overflow-hidden relative">
+            <div key={i} className="w-36 lg:w-40 shrink-0 space-y-2 cursor-pointer group">
+              <div className="aspect-2/3 rounded-lg bg-zinc-800 overflow-hidden relative">
                 <img src={`${item.img}?auto=format&fit=crop&q=80&w=300`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.title} />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1"></div>
+                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-10 border-l-white border-b-[6px] border-b-transparent ml-1"></div>
                   </div>
                 </div>
               </div>
               <h4 className="text-xs font-semibold truncate px-1">{item.title}</h4>
               <p className="text-[10px] text-zinc-500 italic px-1">{item.score} IMDb • {item.year}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-8 space-y-4 mt-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold">All Movies</h2>
+          <div className="text-xs text-zinc-500">Showing {allMovies.length} titles</div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {allMovies.map((movie, idx) => (
+            <div key={idx} onClick={() => setSelectedMovie(movie)} className="space-y-2 cursor-pointer">
+              <div className="aspect-2/3 rounded-lg bg-zinc-800 overflow-hidden relative">
+                <img src={`${movie.img}?auto=format&fit=crop&q=80&w=400`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={movie.title} />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-10 border-l-white border-b-[6px] border-b-transparent ml-1"></div>
+                  </div>
+                </div>
+              </div>
+              <h4 className="text-sm font-semibold truncate px-1">{movie.title}</h4>
+              <p className="text-[10px] text-zinc-500 italic px-1">{movie.score} IMDb • {movie.year}</p>
             </div>
           ))}
         </div>
