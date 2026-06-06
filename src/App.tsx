@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Film, Tv, Video, Bookmark, Download, History } from 'lucide-react';
+import { Search, Bell, Film, Tv, Video, Bookmark, Download, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import PlayerPage from './PlayerPage';
 
 type MediaItem = {
@@ -27,6 +27,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [results, setResults] = useState<MediaItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const debounceRef = React.useRef<number | undefined>(undefined);
 
   async function performSearch(q: string) {
@@ -98,50 +99,98 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen w-full bg-[#0F0F0F] text-white font-sans overflow-hidden">
-      <aside className="w-56 h-full bg-[#050505] border-r border-white/5 flex flex-col p-6">
-        <div className="flex items-center gap-2 mb-10">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-lg italic">F</div>
-          <span className="text-xl font-bold tracking-tight">Fluxlith</span>
+      <aside
+        className={`h-full bg-[#050505] border-r border-white/5 flex flex-col overflow-hidden p-6 transition-all duration-300 ${
+          isCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2 mb-10">
+          <Link
+            to="/"
+            onClick={(event) => {
+              if (isCollapsed) {
+                event.preventDefault();
+                setIsCollapsed(false);
+              }
+            }}
+            className="group relative flex items-center gap-2"
+          >
+            <div className="relative w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center transition-all duration-200">
+              <span
+                className={`text-lg font-bold italic transition-all duration-200 ${
+                  isCollapsed ? 'opacity-100 group-hover:opacity-0' : 'opacity-100'
+                }`}
+              >
+                F
+              </span>
+              <ChevronRight
+                size={16}
+                className={`absolute inset-0 m-auto transition-all duration-200 ${
+                  isCollapsed ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'
+                }`}
+              />
+            </div>
+            {!isCollapsed && <span className="text-xl font-bold tracking-tight">Fluxlith</span>}
+          </Link>
+
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={() => setIsCollapsed((current) => !current)}
+              className="rounded-full border border-white/10 bg-white/5 p-2 text-zinc-200 transition-all duration-300 hover:bg-white/10"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
         </div>
 
         <nav className="flex-1 space-y-6">
           <div className="space-y-3">
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-semibold">Browse</h3>
-            <Link to="/" className="flex items-center gap-3 text-sm text-blue-400 group">
-              <div className="w-1 h-4 bg-blue-500 rounded-full"></div>Home
+            <Link
+              to="/movies"
+              className="flex items-center gap-3 pl-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <Film size={16} />
+              <span
+                className={`inline-block overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+                }`}
+              >
+                Movies
+              </span>
             </Link>
-            <Link to="/movies" className="flex items-center gap-3 pl-4 text-sm text-zinc-400 hover:text-white transition-colors">
-              <Film size={16} /> Movies
+            <Link
+              to="/tv"
+              className="flex items-center gap-3 pl-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <Tv size={16} />
+              <span
+                className={`inline-block overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+                }`}
+              >
+                TV Shows
+              </span>
             </Link>
-            <Link to="/tv" className="flex items-center gap-3 pl-4 text-sm text-zinc-400 hover:text-white transition-colors">
-              <Tv size={16} /> TV Shows
-            </Link>
-            <Link to="/anime" className="flex items-center gap-3 pl-4 text-sm text-zinc-400 hover:text-white transition-colors">
-              <Video size={16} /> Anime
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-semibold">Library</h3>
-            <Link to="/watchlist" className="flex items-center gap-3 pl-4 text-sm text-zinc-400 hover:text-white">
-              <Bookmark size={16} /> Watchlist
-            </Link>
-            <Link to="/downloads" className="flex items-center gap-3 pl-4 text-sm text-zinc-400 hover:text-white">
-              <Download size={16} /> Downloads
-            </Link>
-            <Link to="/history" className="flex items-center gap-3 pl-4 text-sm text-zinc-400 hover:text-white">
-              <History size={16} /> History
+            <Link
+              to="/anime"
+              className="flex items-center gap-3 pl-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <Video size={16} />
+              <span
+                className={`inline-block overflow-hidden whitespace-nowrap transition-all duration-300 ${
+                  isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+                }`}
+              >
+                Anime
+              </span>
             </Link>
           </div>
         </nav>
-
-        <div className="pt-6 border-t border-white/5 text-xs text-zinc-500">
-          Pure frontend TMDB + Vidsync player
-        </div>
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0F0F0F]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+        <header className="h-16 flex items-center px-8 border-b border-white/5 bg-[#0F0F0F]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
             <input
@@ -178,14 +227,6 @@ function Layout({ children }: { children: React.ReactNode }) {
                 )}
               </div>
             )}
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-1 text-xs text-zinc-400">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>Live TMDB feed
-            </div>
-            <button className="p-2 text-zinc-400 hover:text-white">
-              <Bell size={20} />
-            </button>
           </div>
         </header>
 
