@@ -1,10 +1,8 @@
 {
-  "projectId": "gen-lang-client-0955554269",
-  "appId": "1:396221351473:web:a259ae7becc323b6dff710",
-  "apiKey": "AIzaSyD5BZFKYD9xPwfZShlDSrMMqHvmEKcMiaU",
-  "authDomain": "gen-lang-client-0955554269.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-a9270051-26ff-438a-ac46-4b2a5038302e",
-  "storageBucket": "gen-lang-client-0955554269.firebasestorage.app",
-  "messagingSenderId": "396221351473",
-  "measurementId": ""
+  "apiKey": "AIzaSyCFdjaTZK95cqNowgp6FJyD7lfuqz7AkNw",
+  "authDomain": "fluxlith.firebaseapp.com",
+  "projectId": "fluxlith",
+  "storageBucket": "fluxlith.firebasestorage.app",
+  "messagingSenderId": "965299632144",
+  "appId": "1:965299632144:web:8c3eda4fcae225bcef7295"
 }

@@ -1,15 +1,101 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { Search, Bell, Film, Tv, Video, Bookmark, Download, History } from 'lucide-react';
+import PlayerPage from './PlayerPage';
 
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { Search, Bell, Home, Film, Tv, Video, Bookmark, Download, History, ChevronLeft, ChevronRight } from 'lucide-react';
-import { auth, db } from './firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+type MediaItem = {
+  id: number;
+  tmdbId: number;
+  title: string;
+  year: string;
+  score: number;
+  img: string;
+  media_type: 'movie' | 'tv';
+};
 
-function Layout({ children, user, login }: { children: React.ReactNode, user: any, login: () => void }) {
+const TMDB_API_KEY = (import.meta as any).env?.VITE_TMDB_API_KEY;
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+
+function extractYear(value: string | undefined) {
+  if (!value) return 'N/A';
+  return value.slice(0, 4) || 'N/A';
+}
+
+function Layout({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<MediaItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const debounceRef = React.useRef<number | undefined>(undefined);
+
+  async function performSearch(q: string) {
+    if (!q || q.trim().length === 0) {
+      setResults([]);
+      setSearchError(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    if (!TMDB_API_KEY) {
+      setSearchError('Missing TMDB API key.');
+      setResults([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchError(null);
+
+    try {
+      const resp = await fetch(
+        `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=en-US&query=${encodeURIComponent(
+          q,
+        )}&page=1&include_adult=false`,
+      );
+      if (!resp.ok) throw new Error(`search failed: ${resp.status}`);
+      const payload = await resp.json();
+      const items: any[] = Array.isArray(payload.results) ? payload.results : [];
+
+      const mapped = items
+        .filter((it) => it.media_type === 'movie' || it.media_type === 'tv')
+        .map((item) => ({
+          id: item.id,
+          tmdbId: item.id,
+          title: item.title ?? item.name ?? 'Untitled',
+          year: extractYear(item.release_date ?? item.first_air_date),
+          score: Number(item.vote_average ?? 0),
+          img: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : 'https://via.placeholder.com/92x138?text=No+Image',
+          media_type: item.media_type,
+        }))
+        .slice(0, 8);
+
+      setResults(mapped);
+    } catch (e) {
+      console.error('Search error', e);
+      setSearchError('Search failed. Try again later.');
+      setResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    // simple debounce
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    // @ts-ignore
+    debounceRef.current = window.setTimeout(() => performSearch(query), 350);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
+  function handleSelect(media: MediaItem) {
+    setQuery('');
+    setResults([]);
+    navigate(`/watch/${media.media_type}/${media.tmdbId}`);
+  }
+
   return (
     <div className="flex h-screen w-full bg-[#0F0F0F] text-white font-sans overflow-hidden">
       <aside className="w-56 h-full bg-[#050505] border-r border-white/5 flex flex-col p-6">
@@ -17,6 +103,7 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-lg italic">F</div>
           <span className="text-xl font-bold tracking-tight">Fluxlith</span>
         </div>
+
         <nav className="flex-1 space-y-6">
           <div className="space-y-3">
             <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-semibold">Browse</h3>
@@ -33,6 +120,7 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
               <Video size={16} /> Anime
             </Link>
           </div>
+
           <div className="space-y-3">
             <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-semibold">Library</h3>
             <Link to="/watchlist" className="flex items-center gap-3 pl-4 text-sm text-zinc-400 hover:text-white">
@@ -46,24 +134,9 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
             </Link>
           </div>
         </nav>
-        <div className="pt-6 border-t border-white/5">
-          {user ? (
-            <div className="flex items-center gap-3">
-              {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName || "User"} className="w-8 h-8 rounded-full" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-500 to-indigo-600"></div>
-              )}
-              <div className="text-xs">
-                <p className="font-medium truncate max-w-30">{user.displayName || "User"}</p>
-                <p className="text-zinc-500">Premium Plan</p>
-              </div>
-            </div>
-          ) : (
-            <button onClick={login} className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
-              Sign In
-            </button>
-          )}
+
+        <div className="pt-6 border-t border-white/5 text-xs text-zinc-500">
+          Pure frontend TMDB + Vidsync player
         </div>
       </aside>
 
@@ -71,11 +144,44 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
         <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0F0F0F]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-            <input type="text" placeholder="Search for movies, actors, or genres..." className="w-full bg-zinc-900/50 border border-white/5 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              type="text"
+              placeholder="Search for movies, actors, or genres..."
+              className="w-full bg-zinc-900/50 border border-white/5 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+            />
+
+            {query && (
+              <div className="absolute left-0 right-0 mt-2 z-20 max-h-80 overflow-auto rounded-2xl border border-white/5 bg-zinc-950 p-2">
+                {searchLoading ? (
+                  <div className="p-3 text-sm text-zinc-400">Searching...</div>
+                ) : searchError ? (
+                  <div className="p-3 text-sm text-red-300">{searchError}</div>
+                ) : results.length === 0 ? (
+                  <div className="p-3 text-sm text-zinc-400">No results</div>
+                ) : (
+                  results.map((r) => (
+                    <button
+                      key={`${r.media_type}-${r.tmdbId}`}
+                      onClick={() => handleSelect(r)}
+                      className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-white/3"
+                    >
+                      <img src={r.img} alt={r.title} className="w-12 h-18 rounded-md object-cover" />
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold">{r.title}</div>
+                        <div className="text-xs text-zinc-400">{r.media_type.toUpperCase()} • {r.year}</div>
+                      </div>
+                      <div className="text-xs text-zinc-400">Score {r.score.toFixed(1)}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-1 text-xs text-zinc-400">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>Database Synced
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>Live TMDB feed
             </div>
             <button className="p-2 text-zinc-400 hover:text-white">
               <Bell size={20} />
@@ -83,161 +189,134 @@ function Layout({ children, user, login }: { children: React.ReactNode, user: an
           </div>
         </header>
 
-        <div className="pb-8">
-          {children}
-        </div>
+        <div className="pb-8">{children}</div>
       </main>
     </div>
   );
 }
 
 function HomePage() {
-  const allMovies = [
-    { title: "Beyond the Horizon", year: "2025", score: "9.4", img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "The Neon Syndicate", year: "2024", score: "8.7", img: "https://images.unsplash.com/photo-1616530940355-351fabd9524b", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Midnight Protocol", year: "2023", score: "8.9", img: "https://images.unsplash.com/photo-1485846234645-a62644f84728", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Ancient Echoes", year: "2022", score: "7.8", img: "https://images.unsplash.com/photo-1594909122845-11baa439b7bf", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Solaris Drifter", year: "2024", score: "8.2", img: "https://images.unsplash.com/photo-1478720568477-152d9b164e26", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "The Last Oasis", year: "2024", score: "9.2", img: "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Cyber Cities", year: "2023", score: "8.8", img: "https://images.unsplash.com/photo-1509248961158-e54f6934749c", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Ghost Protocol", year: "2024", score: "7.9", img: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Vintage Days", year: "2023", score: "9.5", img: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Silent Sea", year: "2022", score: "8.1", img: "https://images.unsplash.com/photo-1533928298208-27ff66555d8d", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Neon Dreams", year: "2023", score: "8.5", img: "https://images.unsplash.com/photo-1551028719-00167b16eac5", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-    { title: "Digital Frontier", year: "2024", score: "9.0", img: "https://images.unsplash.com/photo-1614729939124-032f0b5609ce", embed: "https://www.vidking.net/embed/movie/1078605?color=5865f2&autoPlay=true" },
-  ];
-  const [selectedMovie, setSelectedMovie] = useState(allMovies[0]);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadTrending = async () => {
+      if (!TMDB_API_KEY) {
+        setError('Missing TMDB API key. Add VITE_TMDB_API_KEY to your .env file.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://api.themoviedb.org/3/trending/all/week?api_key=${TMDB_API_KEY}`);
+        if (!response.ok) {
+          throw new Error(`TMDB request failed with status ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const results: any[] = Array.isArray(payload.results) ? payload.results : [];
+
+        const mapped = results
+          .filter((item) => item.media_type === 'movie' || item.media_type === 'tv')
+          .map((item) => ({
+            id: item.id,
+            tmdbId: item.id,
+            title: item.title ?? item.name ?? 'Untitled',
+            year: extractYear(item.release_date ?? item.first_air_date),
+            score: Number(item.vote_average ?? 0),
+            img: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image',
+            media_type: item.media_type,
+          }))
+          .slice(0, 24);
+
+        setMediaItems(mapped);
+      } catch (fetchError) {
+        console.error('Failed to fetch TMDB data', fetchError);
+        setError('Unable to load TMDB data. Check your API key and network connection.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTrending();
+  }, []);
+
+  const handleSelect = (media: MediaItem) => {
+    navigate(`/watch/${media.media_type}/${media.tmdbId}`);
+  };
 
   return (
-    <>
-      <section className="px-8 py-6">
-        <div className="w-full max-w-300 mx-auto rounded-2xl overflow-hidden">
-          <div className="relative" style={{ paddingTop: '56.25%' }}>
-            <iframe
-              src={selectedMovie.embed}
-              width="100%"
-              height="600"
-              frameBorder="0"
-              allowFullScreen
-              title="Fluxlith Player"
-              className="absolute inset-0 w-full h-full"
-            ></iframe>
+    <div className="px-8 py-6 space-y-8">
+      <section className="space-y-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.35em] text-blue-400">Fluxlith</p>
+            <h1 className="text-4xl font-semibold tracking-tight text-white">Premium streaming with TMDB + Vidsync</h1>
+            <p className="max-w-2xl text-sm text-zinc-400 mt-3">
+              Browse the latest trending movies and TV shows from TMDB. Click a card to open the premium player page with full overview and playback.
+            </p>
+          </div>
+          <div className="rounded-3xl border border-white/5 bg-zinc-950 p-5 text-sm text-zinc-400">
+            <p className="font-semibold text-white">Premium details</p>
+            <p className="mt-2">Each selection opens a dedicated watch page.</p>
           </div>
         </div>
       </section>
 
-      <section className="px-8 space-y-4 mb-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Continue Watching</h2>
-          <Link to="/history" className="text-xs text-zinc-500 hover:text-white">View All</Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-            { title: "The Neon Syndicate", meta: "S2:E4", progress: 65, img: "https://images.unsplash.com/photo-1616530940355-351fabd9524b" },
-            { title: "Midnight Protocol", meta: "S1:E8", progress: 82, img: "https://images.unsplash.com/photo-1485846234645-a62644f84728" },
-            { title: "Ancient Echoes", meta: "Movie", progress: 15, img: "https://images.unsplash.com/photo-1594909122845-11baa439b7bf" },
-            { title: "Solaris Drifter", meta: "S3:E1", progress: 45, img: "https://images.unsplash.com/photo-1478720568477-152d9b164e26" },
-          ].map((item, i) => (
-            <div key={i} className="space-y-2 group cursor-pointer">
-              <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-800">
-                <img src={`${item.img}?auto=format&fit=crop&q=80&w=400`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.title} />
-                <div className="absolute bottom-0 left-0 w-full h-1 bg-zinc-700">
-                  <div className="h-full bg-blue-500" style={{ width: `${item.progress}%` }}></div>
-                </div>
-              </div>
-              <div className="flex justify-between items-start">
-                <h4 className="text-xs font-semibold truncate">{item.title}</h4>
-                <span className="text-[10px] text-zinc-500">{item.meta}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-8 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Recommended for You</h2>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-xs transition-colors"><ChevronLeft size={16} /></button>
-            <button className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-xs transition-colors"><ChevronRight size={16} /></button>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">Trending Now</h2>
+            <p className="text-sm text-zinc-500">Fresh picks from TMDB, updated weekly.</p>
           </div>
+          <div className="text-sm text-zinc-500">{mediaItems.length} items</div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-          {[
-            { title: "The Last Oasis", score: "9.2", year: "2024", img: "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0" },
-            { title: "Cyber Cities", score: "8.8", year: "2023", img: "https://images.unsplash.com/photo-1509248961158-e54f6934749c" },
-            { title: "Ghost Protocol", score: "7.9", year: "2024", img: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0" },
-            { title: "Vintage Days", score: "9.5", year: "2023", img: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1" },
-            { title: "Silent Sea", score: "8.1", year: "2022", img: "https://images.unsplash.com/photo-1533928298208-27ff66555d8d" },
-            { title: "Neon Dreams", score: "8.5", year: "2023", img: "https://images.unsplash.com/photo-1551028719-00167b16eac5" },
-            { title: "Digital Frontier", score: "9.0", year: "2024", img: "https://images.unsplash.com/photo-1614729939124-032f0b5609ce" },
-          ].map((item, i) => (
-            <div key={i} className="w-36 lg:w-40 shrink-0 space-y-2 cursor-pointer group">
-              <div className="aspect-2/3 rounded-lg bg-zinc-800 overflow-hidden relative">
-                <img src={`${item.img}?auto=format&fit=crop&q=80&w=300`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.title} />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-10 border-l-white border-b-[6px] border-b-transparent ml-1"></div>
-                  </div>
-                </div>
-              </div>
-              <h4 className="text-xs font-semibold truncate px-1">{item.title}</h4>
-              <p className="text-[10px] text-zinc-500 italic px-1">{item.score} IMDb • {item.year}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
-      <section className="px-8 space-y-4 mt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">All Movies</h2>
-          <div className="text-xs text-zinc-500">Showing {allMovies.length} titles</div>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {allMovies.map((movie, idx) => (
-            <div key={idx} onClick={() => setSelectedMovie(movie)} className="space-y-2 cursor-pointer">
-              <div className="aspect-2/3 rounded-lg bg-zinc-800 overflow-hidden relative">
-                <img src={`${movie.img}?auto=format&fit=crop&q=80&w=400`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={movie.title} />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-10 border-l-white border-b-[6px] border-b-transparent ml-1"></div>
-                  </div>
+        {loading ? (
+          <div className="rounded-3xl border border-white/5 bg-zinc-950 p-8 text-center text-sm text-zinc-400">Loading trending TMDB content...</div>
+        ) : error ? (
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/5 p-6 text-sm text-red-200">{error}</div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
+            {mediaItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleSelect(item)}
+                className="group text-left overflow-hidden rounded-3xl border border-white/5 bg-zinc-950 p-2 transition hover:border-blue-400/40 hover:bg-zinc-900"
+              >
+                <div className="aspect-2/3 overflow-hidden rounded-3xl bg-zinc-800">
+                  <img
+                    src={item.img}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
                 </div>
-              </div>
-              <h4 className="text-sm font-semibold truncate px-1">{movie.title}</h4>
-              <p className="text-[10px] text-zinc-500 italic px-1">{movie.score} IMDb • {movie.year}</p>
-            </div>
-          ))}
-        </div>
+                <div className="mt-3">
+                  <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
+                    <span>{item.media_type.toUpperCase()}</span>
+                    <span>{item.year}</span>
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-white line-clamp-2">{item.title}</h3>
+                  <p className="mt-1 text-[13px] text-zinc-400">Score {item.score.toFixed(1)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </section>
-    </>
+    </div>
   );
 }
 
 export default function App() {
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const login = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   return (
     <BrowserRouter>
-      <Layout user={user} login={login}>
+      <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/watch/:type/:id" element={<PlayerPage />} />
           <Route path="*" element={<div className="p-8 text-center text-zinc-500">Page under construction</div>} />
         </Routes>
       </Layout>
