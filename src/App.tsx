@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { Search, Bell, Film, Tv, Video, Bookmark, Download, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import PlayerPage from './PlayerPage';
@@ -362,13 +362,37 @@ function MediaSection({ title, endpoint }: MediaSectionProps) {
 
   const handleSelect = (media: MediaItem) => navigate(`/watch/${media.media_type}/${media.tmdbId}`);
 
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [hasScrolledRight, setHasScrolledRight] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+
+  const updateScrollButtons = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    const isAtEnd = scrollLeft + clientWidth >= scrollWidth - 1;
+    const isAtStart = scrollLeft <= 1;
+    const overflow = scrollWidth > clientWidth + 1;
+    setCanScrollRight(!isAtEnd && overflow);
+    setCanScrollLeft(hasScrolledRight && !isAtStart);
+  };
+
+  const scrollRight = () => {
+    if (!scrollRef.current) return;
+    setHasScrolledRight(true);
+    scrollRef.current.scrollBy({ left: 360, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    updateScrollButtons();
+  }, [mediaItems]);
+
   return (
-    <section>
+    <section className="relative">
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-xl font-semibold">{title}</h2>
         </div>
-        <div className="text-sm text-zinc-500">{mediaItems.length} titles</div>
       </div>
 
       {loading ? (
@@ -376,26 +400,58 @@ function MediaSection({ title, endpoint }: MediaSectionProps) {
       ) : error ? (
         <div className="rounded-3xl border border-red-500/20 bg-red-500/5 p-6 text-sm text-red-200">{error}</div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,200px)] justify-center gap-4">
-          {mediaItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleSelect(item)}
-              className="group text-left overflow-hidden rounded-3xl border border-white/5 bg-zinc-950 p-2 transition hover:border-blue-400/40 hover:bg-zinc-900"
-            >
-              <div className="aspect-[2/3] overflow-hidden rounded-3xl bg-zinc-800">
-                <img src={item.img} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-              </div>
-              <div className="mt-3">
-                <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
-                  <span>{item.media_type.toUpperCase()}</span>
-                  <span>{item.year}</span>
+        <div className="relative">
+          <div
+            ref={scrollRef}
+            className="custom-scrollbar flex overflow-x-auto gap-4 pb-4 scroll-smooth"
+            style={{ scrollbarWidth: 'none' }}
+            onScroll={updateScrollButtons}
+          >
+            {mediaItems.slice(0, 20).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleSelect(item)}
+                className="group w-[200px] flex-shrink-0 text-left overflow-hidden rounded-3xl border border-white/5 bg-zinc-950 p-2 transition hover:border-blue-400/40 hover:bg-zinc-900"
+              >
+                <div className="aspect-[2/3] overflow-hidden rounded-3xl bg-zinc-800 flex-shrink-0">
+                  <img src={item.img} alt={item.title} className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
                 </div>
-                <h3 className="mt-2 text-sm font-semibold text-white line-clamp-2">{item.title}</h3>
-                <p className="mt-1 text-[13px] text-zinc-400">Score {item.score.toFixed(1)}</p>
-              </div>
+                <div className="mt-3">
+                  <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
+                    <span>{item.media_type.toUpperCase()}</span>
+                    <span>{item.year}</span>
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-white line-clamp-2">{item.title}</h3>
+                  <p className="mt-1 text-[13px] text-zinc-400">Score {item.score.toFixed(1)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {canScrollLeft && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!scrollRef.current) return;
+                scrollRef.current.scrollBy({ left: -360, behavior: 'smooth' });
+              }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-blue-500 p-2 text-white shadow-lg transition hover:bg-blue-600"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={20} />
             </button>
-          ))}
+          )}
+
+          {canScrollRight && (
+            <button
+              type="button"
+              onClick={scrollRight}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-blue-500 p-2 text-white shadow-lg transition hover:bg-blue-600"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={20} />
+            </button>
+          )}
         </div>
       )}
     </section>
