@@ -16,6 +16,25 @@ const TMDB_API_KEY = (import.meta as any).env?.VITE_TMDB_API_KEY;
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
 const VIDSYNC_THEME = '5865f2';
 
+function buildTmdbRequest(path: string) {
+  const base = `https://api.themoviedb.org/3${path}`;
+  const headers: Record<string, string> = {};
+  let url = base;
+  let authUsed: 'bearer' | 'api_key' | 'none' = 'none';
+
+  const looksLikeJwt = typeof TMDB_API_KEY === 'string' && /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(TMDB_API_KEY);
+
+  if (TMDB_API_KEY && looksLikeJwt) {
+    headers['Authorization'] = `Bearer ${TMDB_API_KEY}`;
+    authUsed = 'bearer';
+  } else if (TMDB_API_KEY) {
+    url += url.includes('?') ? `&api_key=${TMDB_API_KEY}` : `?api_key=${TMDB_API_KEY}`;
+    authUsed = 'api_key';
+  }
+
+  return { url, init: { headers }, authUsed };
+}
+
 const getVidsyncUrl = (type: 'movie' | 'tv', id: string) => {
   if (type === 'movie') {
     return `https://vidsync.xyz/embed/movie/${id}?autoPlay=true&theme=${VIDSYNC_THEME}`;
@@ -57,7 +76,10 @@ export default function PlayerPage() {
       }
 
       try {
-        const response = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${TMDB_API_KEY}&language=en-US`);
+        const { url, init, authUsed } = buildTmdbRequest(`/${type}/${id}?language=en-US`);
+        console.debug('TMDB details request', { url, authUsed });
+        const response = await fetch(url, init as RequestInit);
+        console.debug('TMDB details response', { status: response.status });
         if (!response.ok) {
           throw new Error(`TMDB details request failed with status ${response.status}`);
         }
