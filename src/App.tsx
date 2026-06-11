@@ -48,8 +48,11 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [results, setResults] = useState<MediaItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const debounceRef = React.useRef<number | undefined>(undefined);
+  const searchWrapperRef = React.useRef<HTMLDivElement | null>(null);
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Hide peeking arrow when sidebar is collapsed
   const hidePeekingArrow = () => (isCollapsed ? 'hidden' : '');
@@ -124,6 +127,17 @@ function Layout({ children }: { children: React.ReactNode }) {
     };
   }, [query]);
 
+  React.useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
   function handleSelect(media: MediaItem) {
     setQuery('');
     setResults([]);
@@ -133,7 +147,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full bg-[#0F0F0F] text-white font-sans overflow-hidden">
       <aside
-        className={`h-full bg-[#050505] border-r border-white/5 flex flex-col overflow-hidden p-6 transition-all duration-300 ${
+        className={`h-full bg-[#050505] border-r border-white/5 flex flex-col overflow-visible p-6 transition-all duration-300 ${
           isCollapsed ? 'w-21' : 'w-53'
         }`}
       >
@@ -174,6 +188,62 @@ function Layout({ children }: { children: React.ReactNode }) {
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
+        </div>
+
+        <div className="relative mb-6">
+          <div
+            ref={searchWrapperRef}
+            onClick={() => {
+              if (isCollapsed) {
+                setIsCollapsed(false);
+                setIsSearchOpen(true);
+                window.requestAnimationFrame(() => searchInputRef.current?.focus());
+              }
+            }}
+            className={`relative inline-flex items-center transition-all duration-200 ${isSearchOpen ? 'rounded-2xl bg-zinc-950 ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0F0F0F] shadow-xl' : 'bg-zinc-900/70'} ${isCollapsed ? 'w-12 justify-center px-0 py-3' : 'w-full px-3'} ${isSearchOpen && !isCollapsed ? 'rounded-2xl' : 'rounded-full'} ${isCollapsed ? 'rounded-full' : ''}`}
+          >
+            <Search className={`${isCollapsed ? 'text-zinc-300' : 'absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500'}`} size={16} />
+            <input
+              ref={searchInputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setIsSearchOpen(true)}
+              type="text"
+              placeholder="Search movies, actors, genres..."
+              className={`transition-all focus:outline-none ${isCollapsed ? 'w-0 opacity-0 pointer-events-none py-0 pl-0 pr-0' : 'w-full py-3 pl-12 pr-4'} text-sm text-white placeholder:text-zinc-500 bg-transparent border ${isCollapsed ? 'border-transparent' : isSearchOpen ? 'rounded-r-2xl rounded-l-none border-blue-500' : 'rounded-full border-white/10'}`}
+            />
+
+            {isSearchOpen && query.trim().length > 0 && (
+              <div className="absolute left-full top-0 z-50 max-h-[24rem] min-w-[22rem] rounded-l-2xl rounded-r-none border border-blue-500 bg-zinc-950 shadow-lg">
+                <div className="max-h-[24rem] overflow-hidden rounded-l-2xl rounded-r-none">
+                  <div className="flex max-h-[24rem] flex-col gap-2 overflow-y-auto p-3 text-sm text-white">
+                    {searchLoading ? (
+                      <div className="py-3 text-zinc-400">Searching...</div>
+                    ) : searchError ? (
+                      <div className="py-3 text-red-300">{searchError}</div>
+                    ) : results.length === 0 ? (
+                      <div className="py-3 text-zinc-400">No results</div>
+                    ) : (
+                      results.map((r) => (
+                        <button
+                          key={`${r.media_type}-${r.tmdbId}`}
+                          onClick={() => handleSelect(r)}
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition hover:bg-white/5"
+                        >
+                          <img src={r.img} alt={r.title} className="h-16 w-12 rounded-xl object-cover" />
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <div className="truncate text-sm font-semibold text-white">{r.title}</div>
+                            <div className="truncate text-xs text-zinc-400">{r.media_type.toUpperCase()} • {r.year}</div>
+                          </div>
+                          <div className="shrink-0 text-xs text-zinc-400">{r.score.toFixed(1)}</div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <nav className="flex-1 space-y-6">
@@ -222,45 +292,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <header className="h-16 flex items-center px-8 border-b border-white/5 bg-[#0F0F0F]/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              type="text"
-              placeholder="Search for movies, actors, or genres..."
-              className="w-full bg-zinc-900/50 border border-white/5 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-            />
-
-            {query && (
-              <div className="absolute left-0 right-0 mt-2 z-20 max-h-80 overflow-auto rounded-2xl border border-white/5 bg-zinc-950 p-2">
-                {searchLoading ? (
-                  <div className="p-3 text-sm text-zinc-400">Searching...</div>
-                ) : searchError ? (
-                  <div className="p-3 text-sm text-red-300">{searchError}</div>
-                ) : results.length === 0 ? (
-                  <div className="p-3 text-sm text-zinc-400">No results</div>
-                ) : (
-                  results.map((r) => (
-                    <button
-                      key={`${r.media_type}-${r.tmdbId}`}
-                      onClick={() => handleSelect(r)}
-                      className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-white/3"
-                    >
-                      <img src={r.img} alt={r.title} className="w-12 h-16 rounded-md object-cover" />
-                      <div className="flex-1">
-                        <div className="text-sm font-semibold">{r.title}</div>
-                        <div className="text-xs text-zinc-400">{r.media_type.toUpperCase()} • {r.year}</div>
-                      </div>
-                      <div className="text-xs text-zinc-400">Score {r.score.toFixed(1)}</div>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        </header>
+        <header className="h-16 flex items-center px-8 border-b border-white/5 bg-[#0F0F0F]/80 backdrop-blur-md sticky top-0 z-10 shrink-0"></header>
 
         <div className="pb-8">{children}</div>
       </main>
